@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="MauiApp1.SettingsPage"
+             Title="参数设置">
+    <ScrollView>
+        <VerticalStackLayout Spacing="15" Padding="20">
+            <Frame BorderColor="#E0E0E0" Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="网络配置" FontAttributes="Bold" FontSize="16"/>
+                    <Entry x:Name="IpEntry" Placeholder="服务器IP" TextChanged="SaveSettings"/>
+                    <Entry x:Name="PortEntry" Placeholder="端口" Keyboard="Numeric" TextChanged="SaveSettings"/>
+                </VerticalStackLayout>
+            </Frame>
+
+            <Frame BorderColor="#E0E0E0" Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="协议配置" FontAttributes="Bold" FontSize="16"/>
+                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnDefinitions="Auto,*" RowSpacing="10">
+                        <Label Text="起始符:" Grid.Row="0" VerticalOptions="Center"/>
+                        <Entry x:Name="PrefixEntry" Grid.Row="0" Grid.Column="1" TextChanged="SaveSettings"/>
+
+                        <Label Text="功能码:" Grid.Row="1" VerticalOptions="Center"/>
+                        <Picker x:Name="FuncPicker" Grid.Row="1" Grid.Column="1" SelectedIndexChanged="SaveSettings">
+                            <Picker.ItemsSource>
+                                <x:Array Type="{x:Type x:String}">
+                                    <x:String>原点偏移</x:String>
+                                    <x:String>待定1</x:String>
+                                    <x:String>待定2</x:String>
+                                    <x:String>待定3</x:String>
+                                    <x:String>待定4</x:String>
+                                </x:Array>
+                            </Picker.ItemsSource>
+                        </Picker>
+
+                        <Label Text="分隔符:" Grid.Row="2" VerticalOptions="Center"/>
+                        <Entry x:Name="SepEntry" Grid.Row="2" Grid.Column="1" TextChanged="SaveSettings"/>
+
+                        <Label Text="校验长度:" Grid.Row="3" VerticalOptions="Center"/>
+                        <Entry x:Name="LenEntry" Grid.Row="3" Grid.Column="1" Keyboard="Numeric" Placeholder="扫码长度校验" TextChanged="SaveSettings"/>
+
+                        <Label Text="结束码:" Grid.Row="4" VerticalOptions="Center"/>
+                        <Entry x:Name="EndCharEntry" Grid.Row="4" Grid.Column="1" Placeholder="发送最末尾的字符" TextChanged="SaveSettings"/>
+                    </Grid>
+                </VerticalStackLayout>
+            </Frame>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
