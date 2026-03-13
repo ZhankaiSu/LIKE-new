@@ -11,16 +11,6 @@ public partial class MainPage : ContentPage
     private bool _isConnected = false;
     private readonly object _lock = new();
 
-    // 功能码对应列表 (请确保这里与 SettingsPage.xaml 中的顺序一致)
-    private readonly string[] _funcList = new[]
-    {
-        "原点偏移", // 对应 01
-        "待定1",    // 对应 02
-        "待定2",    // 对应 03
-        "待定3",    // 对应 04
-        "待定4"     // 对应 05
-    };
-
     public MainPage()
     {
         InitializeComponent();
@@ -79,26 +69,6 @@ public partial class MainPage : ContentPage
         }
     }
 
-    //private async void OnStartScanClicked(object sender, EventArgs e)
-    //{
-    //    ScannerOverlay.IsVisible = true;
-
-    //    // 给 UI 一点渲染时间
-    //    await Task.Delay(300);
-
-    //    BarcodeReader.IsDetecting = true;
-
-    //    // 💡 这是一个“黑科技”补丁：
-    //    // 如果画面模糊，在启动瞬间闪一下灯，可以强迫摄像头重新寻找焦距
-    //    try
-    //    {
-    //        BarcodeReader.IsTorchOn = true;
-    //        await Task.Delay(150);
-    //        BarcodeReader.IsTorchOn = false;
-    //    }
-    //    catch { /* 部分设备不支持闪光灯则跳过 */ }
-    //}
-
     // 页面销毁或隐藏时，务必关闭摄像头，防止资源占用导致下次黑屏
     protected override void OnDisappearing()
     {
@@ -119,25 +89,6 @@ public partial class MainPage : ContentPage
         {
             DisconnectSocket("网络连接已断开");
         }
-    }
-
-    // --- 数值控制逻辑 ---
-    private void OnPlusClicked(object sender, EventArgs e)
-    {
-        if (int.TryParse(CounterEntry.Text, out int val))
-            CounterEntry.Text = (val + 1).ToString();
-    }
-
-    private void OnMinusClicked(object sender, EventArgs e)
-    {
-        if (int.TryParse(CounterEntry.Text, out int val) && val > 0)
-            CounterEntry.Text = (val - 1).ToString();
-    }
-
-    private void OnCounterUnfocused(object sender, FocusEventArgs e)
-    {
-        if (!int.TryParse(CounterEntry.Text, out int val) || val < 0)
-            CounterEntry.Text = "0";
     }
 
     // --- 自动重连逻辑 ---
@@ -228,7 +179,6 @@ public partial class MainPage : ContentPage
             _isConnected = false;
         }
         UpdateUIStatus(false);
-        // 可选：记录日志 AddLog($"[系统] {reason}", Colors.Red);
     }
 
     private void UpdateUIStatus(bool connected)
@@ -241,18 +191,6 @@ public partial class MainPage : ContentPage
     }
 
     // --- 扫码逻辑 ---
-    //private async void OnStartScanClicked(object sender, EventArgs e)
-    //{
-    //    // 1. 先显示遮罩层
-    //    ScannerOverlay.IsVisible = true;
-
-    //    // 2. 【关键修复】增加微小延时，等待UI渲染完毕后再开启摄像头检测
-    //    // 这通常能解决部分设备上点击后黑屏的问题
-    //    await Task.Delay(100);
-
-    //    BarcodeReader.IsDetecting = true;
-    //}
-
     private void OnStopScanClicked(object sender, EventArgs e)
     {
         BarcodeReader.IsDetecting = false;
@@ -269,80 +207,17 @@ public partial class MainPage : ContentPage
         {
             BarcodeReader.IsDetecting = false;
             ScannerOverlay.IsVisible = false;
-            try { BarcodeReader.IsTorchOn = false; } catch { } // 添加这行来关闭闪光灯
+            try { BarcodeReader.IsTorchOn = false; } catch { }
             try { Vibration.Default.Vibrate(); } catch { }
-            ProcessAndSend(result.Value);
+            SendData(result.Value);
         });
-    }
-
-    // --- 数据封装与发送 (新格式 + 功能码映射) ---
-    private void ProcessAndSend(string scanCode)
-    {
-        // 1. 读取参数
-        string prefix = Preferences.Get("Prefix", "");
-        string funcName = Preferences.Get("Func", "待定1"); // 获取功能名称
-        string lenStr = Preferences.Get("Len", "0");
-        string sep = Preferences.Get("Sep", ",");
-        string endChar = Preferences.Get("EndChar", "");
-
-        // 修改为：
-        string inputData;
-        if (int.TryParse(CounterEntry.Text, out int inputNum))
-        {
-            // 格式化为至少两位的十六进制，大写字母
-            inputData = inputNum.ToString("X2");
-        }
-        else
-        {
-            // 如果解析失败，保持原样
-            inputData = CounterEntry.Text;
-        }
-
-        // 2. 【关键修改】功能码名称转数字 (01, 02...)
-        int index = Array.IndexOf(_funcList, funcName);
-        string funcCode;
-        if (index >= 0)
-        {
-            // 找到索引，转换为两位数 (例如 index 0 -> "01")
-            funcCode = (index + 1).ToString("D2");
-        }
-        else
-        {
-            // 如果没找到（或者是"无"），视情况处理，这里默认给 "00" 或者不发送
-            funcCode = (funcName == "无") ? "" : "00";
-        }
-
-        // 3. 长度校验
-        if (int.TryParse(lenStr, out int targetLen) && targetLen > 0)
-        {
-            if (scanCode.Length != targetLen)
-            {
-                AddLog($"⚠️ 校验失败: 长度应为{targetLen}, 实测{scanCode.Length}", Colors.Orange);
-                return;
-            }
-        }
-
-        // 4. 构建格式：起始符 + 功能码(数字) + 校验长度 + 输入框数据 + 扫码数据 + 分隔符 + 结束码
-        StringBuilder sb = new();
-        sb.Append(prefix);
-        sb.Append(funcCode); // 这里现在是 01, 02 等
-        sb.Append(lenStr);
-        sb.Append(inputData);
-        sb.Append(scanCode);
-        sb.Append(sep);
-        sb.Append(endChar);
-
-        string finalData = sb.ToString();
-        SendData(finalData);
     }
 
     private void SendData(string data)
     {
-        // 再次检查连接状态
         if (!_isConnected || _socket == null)
         {
             AddLog($"❌ 未连接，丢弃: {data}", Colors.Red);
-            // 尝试触发一次断线检测
             DisconnectSocket("发送失败，判定为断开");
             return;
         }
@@ -351,16 +226,9 @@ public partial class MainPage : ContentPage
         {
             _socket.Send(Encoding.UTF8.GetBytes(data));
             AddLog($"📤 已发送: {data}", Colors.Black);
-
-            // 发送成功后自动 +1
-            MainThread.BeginInvokeOnMainThread(() => {
-                if (int.TryParse(CounterEntry.Text, out int val))
-                    CounterEntry.Text = (val + 1).ToString();
-            });
         }
         catch
         {
-            // 发送异常，说明连接已断
             DisconnectSocket("发送异常");
             AddLog("❌ 连接已断开", Colors.Red);
         }
